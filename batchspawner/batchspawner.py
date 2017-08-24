@@ -148,9 +148,9 @@ class BatchSpawnerBase(Spawner):
         help="Command to run to submit batch scripts. Formatted using req_xyz traits as {xyz}."
         ).tag(config=True)
 
-    req_sudo_opts = Unicode('-E',
-                            help="String of options/flags for sudo (e.g. '-E')"
-                            ).tag(config=True)
+    req_sudo_extra_opts = Unicode('-E',
+        help="String of options/flags for sudo (e.g. '-E' or just '--' for no options)"
+        ).tag(config=True)
 
     def parse_job_id(self, output):
         "Parse output of submit command to get job id."
@@ -397,10 +397,10 @@ class TorqueSpawner(BatchSpawnerRegexStates):
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} qsub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qsub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} qstat -x {job_id}').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} qdel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qstat -x {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qdel {job_id}').tag(config=True)
     # search XML string for job_state - [QH] = pending, R = running, [CE] = done
     state_pending_re = Unicode(r'<job_state>[QH]</job_state>').tag(config=True)
     state_running_re = Unicode(r'<job_state>R</job_state>').tag(config=True)
@@ -408,10 +408,10 @@ class TorqueSpawner(BatchSpawnerRegexStates):
 
 class MoabSpawner(TorqueSpawner):
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} msub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} msub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} mdiag -j {job_id} --xml').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} mjobctl -c {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo -u {username} {sudo_extra_opts} mdiag -j {job_id} --xml').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} mjobctl -c {job_id}').tag(config=True)
     state_pending_re = Unicode(r'State="Idle"').tag(config=True)
     state_running_re = Unicode(r'State="Running"').tag(config=True)
     state_exechost_re = Unicode(r'AllocNodeList="([^\r\n\t\f :"]*)').tag(config=True)
@@ -465,10 +465,10 @@ which jupyterhub-singleuser
 {cmd}
 """).tag(config=True)
     # outputs line like "Submitted batch job 209"
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} sbatch').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} sbatch').tag(config=True)
     # outputs status and exec node like "RUNNING hostname"
-    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} squeue -h -j {job_id} -o "%T %B"').tag(config=True) #
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} scancel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo -u {username} {sudo_extra_opts} squeue -h -j {job_id} -o "%T %B"').tag(config=True) #
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} scancel {job_id}').tag(config=True)
     # use long-form states: PENDING,  CONFIGURING = pending
     #  RUNNING,  COMPLETING = running
     state_pending_re = Unicode(r'^(?:PENDING|CONFIGURING)').tag(config=True)
@@ -508,10 +508,10 @@ class GridengineSpawner(BatchSpawnerBase):
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} qsub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qsub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} qstat -xml').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} qdel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qstat -xml').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} qdel {job_id}').tag(config=True)
 
     def parse_job_id(self, output):
         return output.split(' ')[2]
@@ -558,10 +558,10 @@ Queue
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} condor_submit').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} condor_submit').tag(config=True)
     # outputs job data XML string
     batch_query_cmd = Unicode('condor_q {job_id} -format "%s, " JobStatus -format "%s" RemoteHost -format "\n" True').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} condor_rm {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} condor_rm {job_id}').tag(config=True)
     # job status: 1 = pending, 2 = running
     state_pending_re = Unicode(r'^1,').tag(config=True)
     state_running_re = Unicode(r'^2,').tag(config=True)
@@ -594,9 +594,9 @@ class LsfSpawner(BatchSpawnerBase):
     ''').tag(config=True)
 
 
-    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} bsub').tag(config=True)
-    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} bjobs -a -noheader -o "STAT EXEC_HOST" {job_id}').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} bkill {job_id}').tag(config=True)
+    batch_submit_cmd = Unicode('sudo -u {username} {sudo_extra_opts} bsub').tag(config=True)
+    batch_query_cmd = Unicode('sudo -u {username} {sudo_extra_opts} bjobs -a -noheader -o "STAT EXEC_HOST" {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo -u {username} {sudo_extra_opts} bkill {job_id}').tag(config=True)
 
     def get_env(self):
         env = super().get_env()
