@@ -144,9 +144,13 @@ class BatchSpawnerBase(Spawner):
             subvars[t[4:]] = getattr(self, t)
         return subvars
 
-    batch_submit_cmd = Unicode('', \
+    batch_submit_cmd = Unicode('',
         help="Command to run to submit batch scripts. Formatted using req_xyz traits as {xyz}."
         ).tag(config=True)
+
+    req_sudo_opts = Unicode('-E',
+                            help="String of options/flags for sudo (e.g. '-E')"
+                            ).tag(config=True)
 
     def parse_job_id(self, output):
         "Parse output of submit command to get job id."
@@ -277,7 +281,7 @@ class BatchSpawnerBase(Spawner):
         job = yield self.submit_batch_script()
 
         # We are called with a timeout, and if the timeout expires this function will
-        # be interrupted at the next yield, and self.stop() will be called. 
+        # be interrupted at the next yield, and self.stop() will be called.
         # So this function should not return unless successful, and if unsuccessful
         # should either raise and Exception or loop forever.
         assert len(self.job_id) > 0
@@ -393,10 +397,10 @@ class TorqueSpawner(BatchSpawnerRegexStates):
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo -E -u {username} qsub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} qsub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo -E -u {username} qstat -x {job_id}').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo -E -u {username} qdel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} qstat -x {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} qdel {job_id}').tag(config=True)
     # search XML string for job_state - [QH] = pending, R = running, [CE] = done
     state_pending_re = Unicode(r'<job_state>[QH]</job_state>').tag(config=True)
     state_running_re = Unicode(r'<job_state>R</job_state>').tag(config=True)
@@ -404,10 +408,10 @@ class TorqueSpawner(BatchSpawnerRegexStates):
 
 class MoabSpawner(TorqueSpawner):
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo -E -u {username} msub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} msub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo -E -u {username} mdiag -j {job_id} --xml').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo -E -u {username} mjobctl -c {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} mdiag -j {job_id} --xml').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} mjobctl -c {job_id}').tag(config=True)
     state_pending_re = Unicode(r'State="Idle"').tag(config=True)
     state_running_re = Unicode(r'State="Running"').tag(config=True)
     state_exechost_re = Unicode(r'AllocNodeList="([^\r\n\t\f :"]*)').tag(config=True)
@@ -461,10 +465,10 @@ which jupyterhub-singleuser
 {cmd}
 """).tag(config=True)
     # outputs line like "Submitted batch job 209"
-    batch_submit_cmd = Unicode('sudo -E -u {username} sbatch').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} sbatch').tag(config=True)
     # outputs status and exec node like "RUNNING hostname"
-    batch_query_cmd = Unicode('sudo -E -u {username} squeue -h -j {job_id} -o "%T %B"').tag(config=True) #
-    batch_cancel_cmd = Unicode('sudo -E -u {username} scancel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} squeue -h -j {job_id} -o "%T %B"').tag(config=True) #
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} scancel {job_id}').tag(config=True)
     # use long-form states: PENDING,  CONFIGURING = pending
     #  RUNNING,  COMPLETING = running
     state_pending_re = Unicode(r'^(?:PENDING|CONFIGURING)').tag(config=True)
@@ -504,10 +508,10 @@ class GridengineSpawner(BatchSpawnerBase):
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo -E -u {username} qsub').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} qsub').tag(config=True)
     # outputs job data XML string
-    batch_query_cmd = Unicode('sudo -E -u {username} qstat -xml').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo -E -u {username} qdel {job_id}').tag(config=True)
+    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} qstat -xml').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} qdel {job_id}').tag(config=True)
 
     def parse_job_id(self, output):
         return output.split(' ')[2]
@@ -554,10 +558,10 @@ Queue
 """).tag(config=True)
 
     # outputs job id string
-    batch_submit_cmd = Unicode('sudo -E -u {username} condor_submit').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} condor_submit').tag(config=True)
     # outputs job data XML string
     batch_query_cmd = Unicode('condor_q {job_id} -format "%s, " JobStatus -format "%s" RemoteHost -format "\n" True').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo -E -u {username} condor_rm {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} condor_rm {job_id}').tag(config=True)
     # job status: 1 = pending, 2 = running
     state_pending_re = Unicode(r'^1,').tag(config=True)
     state_running_re = Unicode(r'^2,').tag(config=True)
@@ -576,8 +580,8 @@ Queue
         return super(CondorSpawner,self).cmd_formatted_for_batch().replace('"','""').replace("'","''")
 
 class LsfSpawner(BatchSpawnerBase):
-    '''A Spawner that uses IBM's Platform Load Sharing Facility (LSF) to launch notebooks.'''    
-    
+    '''A Spawner that uses IBM's Platform Load Sharing Facility (LSF) to launch notebooks.'''
+
     batch_script = Unicode('''#!/bin/sh
     #BSUB -R "select[type==any]"    # Allow spawning on non-uniform hardware
     #BSUB -R "span[hosts=1]"        # Only spawn job on one server
@@ -585,14 +589,14 @@ class LsfSpawner(BatchSpawnerBase):
     #BSUB -J spawner-jupyterhub
     #BSUB -o {homedir}/.jupyterhub.lsf.out
     #BSUB -e {homedir}/.jupyterhub.lsf.err
-    
-    {cmd}    
+
+    {cmd}
     ''').tag(config=True)
 
 
-    batch_submit_cmd = Unicode('sudo -E -u {username} bsub').tag(config=True)
-    batch_query_cmd = Unicode('sudo -E -u {username} bjobs -a -noheader -o "STAT EXEC_HOST" {job_id}').tag(config=True)
-    batch_cancel_cmd = Unicode('sudo -E -u {username} bkill {job_id}').tag(config=True)
+    batch_submit_cmd = Unicode('sudo {sudo_opts} -u {username} bsub').tag(config=True)
+    batch_query_cmd = Unicode('sudo {sudo_opts} -u {username} bjobs -a -noheader -o "STAT EXEC_HOST" {job_id}').tag(config=True)
+    batch_cancel_cmd = Unicode('sudo {sudo_opts} -u {username} bkill {job_id}').tag(config=True)
 
     def get_env(self):
         env = super().get_env()
@@ -614,7 +618,7 @@ class LsfSpawner(BatchSpawnerBase):
         # Output determined by results of self.batch_query_cmd
         if self.job_status:
             return self.job_status.split(' ')[0].upper() in {'PEND', 'PUSP'}
-            
+
     def state_isrunning(self):
         if self.job_status:
             return self.job_status.split(' ')[0].upper() == 'RUN'
